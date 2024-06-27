@@ -1,0 +1,87 @@
+{
+  "instances": [
+    {
+      "name": "Seiyoku",
+      "ip": "178.201.166.208",
+      "domain": "seiyoku.me"
+    },
+    {
+      "name": "Bilbo",
+      "ip": "46.232.248.158",
+      "domain": "bilbosjournal.com"
+    }
+  ],
+  "services": [
+    {
+      "name": "Kinklist",
+      "type": "Webserver",
+      "software": "python/flask",
+      "host": "Bilbo",
+      "domain": "kinkli.st",
+      "port": 80,
+      "expectation": "active"
+    },
+    {
+      "name": "R34 Checker Web",
+      "type": "Webserver",
+      "software": "python/flask",
+      "host": "Bilbo",
+      "domain": "hentai.bilbosjournal.com",
+      "port": 80,
+      "expectation": "active"
+    },
+    {
+      "name": "Personal Website",
+      "type": "Webserver",
+      "software": "nodejs",
+      "host": "Bilbo",
+      "domain": "paul-haeussler.de",
+      "port": 80,
+      "expectation": "active"
+    },
+    {
+      "name": "Minecraft Modded",
+      "type": "Gameserver",
+      "software": "minecraft/fabric",
+      "host": "Seiyoku",
+      "port": 25565,
+      "rcon_port": 25575,
+      "expectation": "active"
+    },
+    {
+      "name": "Minecraft Vanilla",
+      "type": "Gameserver",
+      "software": "minecraft/paper",
+      "host": "Seiyoku",
+      "port": 25566,
+      "rcon_port": 25576,
+      "expectation": "active"
+    },
+    {
+      "name": "Terraria",
+      "type": "Gameserver",
+      "software": "terraria/tshock",
+      "host": "Seiyoku",
+      "port": 7777,
+      "rcon_port": 7778,
+      "expectation": "inactive"
+    },
+    {
+      "name": "Plex Web",
+      "type": "Video Streaming",
+      "software": "Plex",
+      "host": "Seiyoku",
+      "domain": "plex.seiyoku.me",
+      "port": 80,
+      "expectation": "active"
+    },
+    {
+      "name": "Plex API",
+      "type": "API",
+      "software": "Plex",
+      "host": "Seiyoku",
+      "port": 32400,
+      "expectation": "active"
+    }
+  ]
+}

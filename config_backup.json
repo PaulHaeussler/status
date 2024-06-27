@@ -1,0 +1,51 @@
+{
+  "instances": [
+    {
+      "name": "Seiyoku",
+      "ip": "178.201.166.208",
+      "domain": "seiyoku.me"
+    },
+    {
+      "name": "Bilbo",
+      "ip": "46.232.248.158",
+      "domain": "bilbosjournal.com"
+    }
+  ],
+  "services": [
+    {
+      "name": "Kinklist",
+      "type": "Webserver",
+      "software": "python/flask",
+      "host": "Bilbo",
+      "domain": "kinkli.st",
+      "port": 80,
+      "status": "enabled"
+    },
+    {
+      "name": "Minecraft Vanilla",
+      "type": "Gameserver",
+      "software": "Minecraft",
+      "host": "Seiyoku",
+      "port": 25565,
+      "rcon_Port": 25575,
+      "status": "enabled"
+    },
+    {
+      "name": "Plex Web",
+      "type": "Video Streaming",
+      "software": "Plex",
+      "host": "Seiyoku",
+      "domain": "plex.seiyoku.me",
+      "port": 80,
+      "status": "enabled"
+    },
+    {
+      "name": "Plex API",
+      "type": "Video Streaming",
+      "software": "Plex",
+      "host": "Seiyoku",
+      "port": 32400,
+      "status": "enabled"
+    }
+  ]
+}
