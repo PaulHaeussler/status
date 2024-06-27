@@ -11,6 +11,11 @@
       "domain": "bilbosjournal.com"
     }
   ],
+  "hosts": {
+    "Seiyoku": "178.201.166.208",
+    "Bilbo": "46.232.248.158",
+    "Tower": "178.201.166.208"
+  },
   "services": [
     {
       "name": "Kinklist",

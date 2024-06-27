@@ -10,20 +10,18 @@ import time
 import urllib
 import re
 import requests
-import mcrcon
+
+
 from os.path import dirname, abspath
-
-
-from flask import Flask, request, make_response
+from flask import Flask, request, make_response, render_template, jsonify
 from loguru import logger
 from requests import get
 from mcstatus import JavaServer
 
-
 from db import MySQLPool
 
 force_mobile = False
-wait_time = 15
+wait_time = 60
 rcon_pw = "ovTV2NCq"
 
 log = logging.getLogger('werkzeug')
@@ -74,20 +72,23 @@ class Status:
         self.config = json.load(open(self.json_file))
         self.data = {
             "lastChecked": datetime.datetime.utcfromtimestamp(0),
-            "nextCheck": datetime.datetime.utcnow(),
+            "nextCheck": datetime.datetime.now(),
             "services": self.config["services"]
         }
 
+        try:
+            args = read_args()
+            dbhost = args['dbhost']
+            dbuser = args['dbuser']
+            dbpw = args['dbpw']
+            dbschema = args['dbschema']
 
-        args = read_args()
-        dbhost = args['dbhost']
-        dbuser = args['dbuser']
-        dbpw = args['dbpw']
-        dbschema = args['dbschema']
 
+            self.db = MySQLPool(host=dbhost, user=dbuser, password=dbpw, database=dbschema,
+                        pool_size=15)
+        except:
+            logger.warning("No DB params supplied!")
 
-        self.db = MySQLPool(host=dbhost, user=dbuser, password=dbpw, database=dbschema,
-                       pool_size=15)
 
         self.validate_ips()
 
@@ -113,6 +114,9 @@ class Status:
                 if host["ip"] != ip:
                     logger.warning(f"Old IP {host['ip']} for domain {host['domain']} is invalid, using new {ip}")
                     self.config["instances"][_]["ip"] = ip
+                    self.config["hosts"][host["name"]] = ip
+                    if host["name"] == "Seiyoku":
+                        self.config["hosts"]["Tower"] = ip
                     self.rewriteConfig(self.config)
                     self.update_config()
             print()
@@ -128,7 +132,12 @@ class Status:
 
 
     def update_config(self):
-        requests.post('https://status.seiyoku.me/updateConfig', json=self.config)
+        # TODO der müll hier wird nicht so worken, das muss die jeweils andere IP sein. Wg. dem nginx klappt das nicht, also geh ich entweder direkt auf port und schalt den frei, oder der code nimmt die jeweils andere domain und die haben in dns A, B und B, A
+        try:
+            requests.post('https://status.seiyoku.me/updateConfig', json=self.config)
+        except:
+            logger.error("Failed to share updated config!")
+
 
 
     def rewriteConfig(self, new_config):
@@ -157,35 +166,37 @@ class Status:
 
             for _, service in enumerate(self.data["services"]):
                 logger.info(f"Checking service {service['name']}...")
-                isAvailable = False
-                version = ""
-                response_time = 0
-                if "rcon_port" in service:
-                    #rcon
-                    current_players = 0
-                    max_players = 0
+                try:
+                    isAvailable = False
+                    version = ""
+                    response_time = 0
+                    if "rcon_port" in service:
+                        #rcon
+                        current_players = 0
+                        max_players = 0
 
-                    fetch_minecraft_metadata(self.get_domain(service), service["port"])
+                        fetch_minecraft_metadata(self.get_domain(service), service["port"])
 
 
-                elif service["type"] in ["Webserver", "Video Streaming"]:
-                    #http
-                    start_time = time.time_ns()
-                    isAvailable, version = self.check_webserver(service, _)
-                    if not isAvailable:
+                    elif service["type"] in ["Webserver", "Video Streaming"]:
+                        #http
                         start_time = time.time_ns()
-                        isAvailable, version = self.check_webserver(service, _, "http://")
-                        if isAvailable:
-                            self.data["services"][_]["info"] = self.data["services"][_].get("info", "") + "http only;"
-                    response_time = (time.time_ns() - start_time)/1000000
-                else:
-                    #ping
-                    start_time = time.time_ns()
-                    isAvailable = is_port_in_use(self.get_domain(service), service["port"])
-                    response_time = (time.time_ns() - start_time) / 1000000
-                    self.data["services"][_]["info"] = self.data["services"][_].get("info", "") + "ping only;"
+                        isAvailable, version = self.check_webserver(service, _)
+                        if not isAvailable:
+                            start_time = time.time_ns()
+                            isAvailable, version = self.check_webserver(service, _, "http://")
+                            if isAvailable:
+                                self.data["services"][_]["info"] = self.data["services"][_].get("info", "") + "http only;"
+                        response_time = (time.time_ns() - start_time)/1000000
+                    else:
+                        #ping
+                        start_time = time.time_ns()
+                        isAvailable = is_port_in_use(self.get_domain(service), service["port"])
+                        response_time = (time.time_ns() - start_time) / 1000000
+                        self.data["services"][_]["info"] = self.data["services"][_].get("info", "") + "ping only;"
 
-
+                except:
+                    logger.error(f"Failed to check service {service['name']}!")
 
                 if isAvailable:
                     self.data["services"][_]["status"] = "online"
@@ -195,6 +206,8 @@ class Status:
                 self.data["services"][_]["response_time"] = response_time
                 self.data["services"][_]["version"] = version
                 logger.info(f"service {service['name']} checked!")
+            self.data["lastChecked"] = datetime.datetime.now()
+            self.data["nextCheck"] = datetime.datetime.now() + datetime.timedelta(0, wait_time)
             time.sleep(wait_time)
 
 
@@ -224,9 +237,16 @@ class Status:
 
         self.app = Flask(__name__)
 
+
         @self.app.route('/', methods=['GET', 'POST'])
         def index():
-            pass
+            return render_template("index.html")
+
+
+        @self.app.route('/data', methods=['GET'])
+        def data():
+            return jsonify(self.data)
+
 
         @self.app.route('/updateConfig', methods=['POST'])
         def updateConfig():
@@ -249,6 +269,8 @@ class Status:
                 res.status_code = 401
                 return res
 
+
+
         logger.info("Dispatching check thread...")
         self.dispatch_thread()
         logger.info("Webserver ready!")
@@ -257,6 +279,6 @@ class Status:
         else:
             return self.app
 
-if __name__ == '__main__':
-    s = Status()
-    s.create_app()
+
+s = Status()
+s.create_app()
